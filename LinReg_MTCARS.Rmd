@@ -1,0 +1,412 @@
+---
+title: "Trabalho do curso de regressão linear - MQ2019"
+output:
+  html_document:
+    df_print: paged
+  word_document: default
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+------
+## 1.1 Preparação para análise
+
+Neste documento será apresentado o código e as análises realizadas para resolver a questão proposta no trabalho, que envolve analisar o banco de dados mtcars. O primeiro passo foi instalar os pacotes que serão utilizados ao longo do curso e na resulução deste código.
+
+```{r pacotes,warning=FALSE,echo=T, results='hide', message=F, warning=F}
+
+library("lawstat")
+library("nortest")
+library("car")
+library("lmtest")
+library("Hmisc")
+library("ggplot2")
+library("corrplot")
+library("corrplot")
+library("dplyr")
+
+```
+Em seguida o arquivo mtcars foi carregado e utilizou-se a função str para verificar a estrutura dos dados, o resultado pode ser verificada abaixo:
+
+```{r load}
+#Abrindo arquivo 
+dados=read.table(file="mtcars.txt",header=TRUE,sep="\t")
+
+#verificar estrutura dos dados
+str(dados)
+```
+
+O banco de dados mtcars possui  32 observações com 12 variáveis.Na estrutura é possível perceber que algumas variáveis não estão no melhor formato, e precisam ser convertidas.A variável nome esta como fator, e algumas variáveis categóricas como Número de cilindros(cyl) estão como inteiro. Por isso foi feita a seguinte conversão:
+
+```{r conversao}
+dados$Name=as.character(dados$Name)
+dados$cyl=as.factor(dados$cyl)
+dados$vs = as.factor(dados$vs)
+dados$am = as.factor(dados$am)
+dados$gear = as.factor(dados$gear)
+dados$carb =as.factor(dados$carb)
+str(dados)
+```
+## 1.2 Análise Exploratória
+
+Nesta sessão é apresentada uma análise exploratória das variáveis presentes nos dados, numéricas ou categóricas. Serão apresentadas algumas estatisticas básicas e também algumas visualizações para permitir entender melhor os dados que serão considerados no modelo. 
+
+As variáveis **mpg**, **hp**, **wt** e **am** são comentadas com mais detalhes, e as demais variáveis são apresentados somente os resultados. 
+
+
+### 1.2.1 Variáveis numéricas
+
+#### 1.2.1.1 Variável dependente- Milhas por galão (MPG)
+
+A primeira variável a ser análisada é a variável mpg -Milhas por galão, que será a variável dependente no modelo do trabalho. Aqui são apresentadas  algumas estatisticas descritivas e um histograma dos dados.
+
+
+```{r mpg}
+### Milhas por galão (MPG)
+summary(dados$mpg)
+sd(dados$mpg) # Desvio-padrÃ£o
+var(dados$mpg) #variancia
+quantile(dados$mpg,0.90, na.rm=T) # Percentil 90
+sum(is.na(dados$mpg)) # Total de Missings
+
+ggplot(dados, aes(x=mpg)) + geom_histogram() 
+```
+
+Análisando a variável mpg uma das primeiras questões que é possível destacar é a distribuição da variável, que pode ser notada no histograma. O histograma apresenta dois picos, o que pode sugerir que a variável tem uma distribuição bimodal. Além disso avaliando o gráfico, e também as estatisticas descritivas (quartis, mediana e media) percebe-se que os dados apresentam uma leve assimetria, se concentrando mais a esquerda.O desvio padrão apresenta um valor médio, e o valor máximo não é muito distante do percitil 90. Não existem valores faltantes nestes dados.
+
+
+
+#### 1.2.1.2 Variável independente- Peso 1000lb (wt)
+
+```{r wt}
+#####wt - Peso (1000 lbs)
+summary(dados$wt)
+sd(dados$wt) # Desvio-padrÃ£o
+var(dados$wt) #variancia
+quantile(dados$wt,0.90, na.rm=T) # Percentil 90
+sum(is.na(dados$wt)) # Total de Missings
+
+ggplot(dados, aes(x=wt)) + geom_histogram()+ geom_histogram(binwidth=0.3)
+
+```
+ A distribuição da variável peso sugerem que esta apresenta uma distribuição normal, e tem uma caracteristica simétrica. As estatisticas descritivas reforçam isto já que os valores da mediana e média são bem próximos e os valores parecem bem distribuidos entre os quartis. O desvio padrão apresenta um valor razoavel, e o valor máximo não é muito distante do percitil 90.Não existem valores faltantes nestes dados.
+ 
+#### 1.2.1.3 Variável independente- Potência bruta (hp)
+
+
+```{r hp}
+
+####hp - Potência bruta (cavalos de força)
+summary(dados$hp)
+sd(dados$hp) # Desvio-padrÃ£o
+var(dados$hp) #variancia
+quantile(dados$hp,0.90, na.rm=T) # Percentil 90
+sum(is.na(dados$hp)) # Total de Missings
+
+ggplot(dados, aes(x=hp)) + geom_histogram()+geom_histogram(binwidth=25)
+```
+
+A variável potência bruta aparenta ter uma distribuição em sino, porém um pouco deslocada para a esquerda. Essa assimetria dos dados é confirmada pelas estaticas ao observar a diferença no valor da mediana e a média, e a distribuição dos quartis.Não existem valores faltantes nestes dados.
+
+
+#### 1.2.1.4 Variável independente- Deslocamento (disp)
+
+```{r disp}
+summary(dados$disp)
+sd(dados$disp) # Desvio-padrÃ£o
+var(dados$disp) #variancia
+quantile(dados$disp,0.90, na.rm=T) # Percentil 90
+sum(is.na(dados$disp)) # Total de Missings
+
+ggplot(dados, aes(x=disp)) + geom_histogram()+geom_histogram(binwidth=10)
+```
+
+#### 1.2.1.5 Variável independente- Rácio do eixo traseiro (drat)
+
+```{r drat}
+#####drat - Rácio do eixo traseiro
+summary(dados$drat)
+sd(dados$drat) # Desvio-padrÃ£o
+var(dados$drat) #variancia
+quantile(dados$drat,0.90, na.rm=T) # Percentil 90
+sum(is.na(dados$drat)) # Total de Missings
+
+ggplot(dados, aes(x=drat)) + geom_histogram()+ geom_histogram(binwidth=0.3)
+
+```
+
+#### 1.2.1.6 Variável independente- Tempo de 1/4 de milha (qsec)
+
+```{r qsec}
+
+#####qsec - Tempo de 1/4 de milha#####
+sd(dados$qsec) # Desvio-padrÃ£o
+var(dados$qsec) #variancia
+quantile(dados$qsec,0.90, na.rm=T) # Percentil 90
+sum(is.na(dados$qsec)) # Total de Missings
+
+ggplot(dados, aes(x=qsec)) + geom_histogram()+ geom_histogram(binwidth=1)
+
+```
+
+### 1.2.2 Variáveis categóricas
+
+#### 1.2.2.1 Variável categórica- Transmissão (am)
+
+```{r am}
+#######am - Transmissão (0 = automatica, 1 = manual)#####
+cbind(tabela =table(dados$am), 
+      proporção =prop.table(table(dados$am)))
+
+#BOXPLOT x mpg
+ggplot(dados, aes(x=am, y=mpg)) +  geom_boxplot()
+
+### MÉDIA mpg  por categoria de am
+aggregate(mpg~am, dados, mean )
+```
+
+A variável transmissão é uma variável binária, que é representada nos dados pelo valor 0 para tranasmissão automática, e 1 para transmissão manual. Aproximadamente 60% dos carros dos dados tem transmissão automática, e 40% tem manual. 
+
+Os boxplots sugerem que as médias das milhas por galão (variável dependente) variam nestas duas categorias, e o calculo das médias confirma esta sugestão. Os carros de transmissão manual apresentam uma média de milhas por galão de 17.14 que é menor que a média encontrada nos carros de transmissão automática, de 24.39. Isso sugere que carros manuais costumam apresentar valores menores de milhas por galão. 
+
+
+#### 1.2.2.2 Variável categórica-  Número de cilindros (cyl)
+
+```{r cyl}
+#######cyl - Número de cilindros- Factor w/ 3 levels "4","6","8"#####
+cbind(tabela =table(dados$cyl), 
+      proporcao =prop.table(table(dados$cyl)))
+
+#BOXPLOT x mpg
+ggplot(dados, aes(x=cyl, y=mpg)) +  geom_boxplot()
+
+### MÉDIA mpg  por categoria de cyl 
+aggregate(mpg~cyl, dados, mean )
+
+```
+
+#### 1.2.2.3 Variável categórica-  V/S (vs)
+```{r vs}
+#######vs - V/S-Factor w/ 2 levels "0","1##################
+cbind(tabela =table(dados$vs), 
+      proporção =prop.table(table(dados$vs)))
+
+#BOXPLOT x mpg
+ggplot(dados, aes(x=vs, y=mpg)) +  geom_boxplot()
+
+### MÉDIA mpg  por categoria de vs
+aggregate(mpg~vs, dados, mean )
+
+```
+
+#### 1.2.2.3 Variável categórica- Número de engrenagens (gear)
+```{r gear}
+#######gear - Número de engrenagens-Factor w/ 3 levels "3","4","5"#####
+cbind(tabela =table(dados$gear), 
+      proporção =prop.table(table(dados$gear)))
+
+#BOXPLOT x mpg
+ggplot(dados, aes(x=gear, y=mpg)) +  geom_boxplot()
+
+### MÉDIA mpg  por categoria de gear
+aggregate(mpg~gear, dados, mean )
+```
+
+#### 1.2.2.4 Variável categórica-  Número de carburadores (carb)
+```{r carb}
+#######carb - Número de carburadores#####
+cbind(tabela =table(dados$carb), 
+      proporção =prop.table(table(dados$carb)))
+
+ggplot(dados, aes(x=carb, y=mpg)) +  geom_boxplot()
+
+### MÉDIA mpg  por categoria de carb
+aggregate(mpg~carb, dados, mean )
+```
+
+# Questão 3 - Em produção
+
+## 3.1 Análise de correlação
+
+### 3.1.1 mpg x hp
+
+```{r lmhp}
+#dispersão hp
+ggplot(dados, aes(x=hp, y=mpg)) + 
+  geom_point()+
+  geom_smooth(method=lm)
+
+cor(dados$mpg,dados$hp)
+
+mod1=lm(dados$mpg~dados$hp)
+summary(mod1)
+plot(mod1)
+
+```
+
+### 3.1.2 mpg x disp
+
+```{r lmdisp}
+
+#dispersão disp
+ggplot(dados, aes(x=disp, y=mpg)) + 
+  geom_point()+
+  geom_smooth(method=lm)
+
+cor(dados$mpg,dados$disp)
+
+mod2=lm(dados$mpg~dados$disp)
+summary(mod2)
+#plot(mod2)
+
+```
+
+### 3.1.3 mpg x drat
+
+```{r lmdrat}
+
+#dispersão drat
+ggplot(dados, aes(x=drat, y=mpg)) + 
+  geom_point()+
+  geom_smooth(method=lm)
+
+cor(dados$mpg,dados$drat)
+```
+
+### 3.1.4 mpg x wt
+
+```{r lmwt}
+
+#dispersão wt
+ggplot(dados, aes(x=wt, y=mpg)) + 
+  geom_point()+
+  geom_smooth(method=lm)
+
+cor(dados$mpg,dados$wt)
+#plot(mod4)
+
+```
+
+### 3.1.5 mpg x qsec
+
+```{r lmqsec}
+
+#dispersão qsec
+ggplot(dados, aes(x=qsec, y=mpg)) + 
+  geom_point()+
+  geom_smooth(method=lm)
+
+cor(dados$mpg,dados$qsec)
+#plot(mod5)
+
+```
+
+#3.2 Matriz de correlação
+
+```{r matriz}
+
+#######Matriz corelação
+dadosnum=dados%>% select(mpg,hp,wt,disp,drat,qsec)
+dadosnum = as.data.frame(dadosnum)
+dadosnum.cor<- cor(dadosnum)
+corrplot(dadosnum.cor, method="pie",type="upper")
+
+```
+
+# 3.4 Regressão Simples- mpg x wt
+
+```{r reg}
+mod1=lm(dados$mpg~dados$wt)
+summary(mod1)
+```
+
+```{r anova}
+anova1=anova(mod1)
+anova1
+```
+
+## 3.5.1 Intervalo de confiança Betas- método 1
+
+
+```{r valor int}
+
+beta11 = mod1$coefficients["dados$wt"]
+beta01=  mod1$coefficients["(Intercept)"] 
+inter= confint(mod1)
+inter
+paste("O valor de B0 médio encontrado foi de ",beta01," e com 95% de confiança esperaria-se que o valor predito se encontrasse entre ", inter[1],"e ",inter[3])
+
+paste("O valor de B1 médio encontrado foi de ",beta11," e com 95% de confiança esperaria-se que o valor predito se encontrasse entre ", inter[2],"e ",inter[4])
+```
+ Como é possível perceber pelos resultados acima o B0 e o B1 estão dentro do intervalo de confiança, a 95% de confiança.
+
+## 3.5.2Intervalo de confiança metodo 2
+
+```{r metodo2}
+
+MSE = anova(mod1)$'Mean Sq'[2] 
+s2_b1=MSE/sum((dados$wt-mean(dados$wt))^2)
+s_b1=sqrt(s2_b1)
+
+n=nrow(dados)
+s2_b0=MSE*(1/n+mean(dados$wt)^2/sum((dados$wt-mean(dados$wt))^2))
+s_b0=sqrt(s2_b0) 
+
+#Intervalo de Confiança de Bonferroni 
+icsup_b0_bonf=beta01+s_b0*qt(0.05/(2*2),df=(n-2),lower.tail=F)
+icinf_b0_bonf=beta01-s_b0*qt(0.05/(2*2),df=(n-2),lower.tail=F) 
+ic_b0_bonf=c(icinf_b0_bonf,icsup_b0_bonf) 
+ic_b0_bonf  #Intervalo de Confiança para o B0
+
+icsup_b1_bonf=beta11+s_b1*qt(0.05/(2*2),df=(n-2),lower.tail=F) 
+icinf_b1_bonf=beta11-s_b1*qt(0.05/(2*2),df=(n-2),lower.tail=F)
+ic_b1_bonf=c(icinf_b1_bonf,icsup_b1_bonf)
+ic_b1_bonf #Intervalo de Confiança para o B1
+
+```
+## 3.5.3 Intervalo de confiança- valor predito 
+
+```{r valor int3}
+
+# Calculando valor predito modelo- metodo 1
+
+mod1$coefficients
+xval=2.620
+ymod = mod1$coefficient[1]+mod1$coefficient[2]*xval
+
+paste("O valor predito para x= 2620 é : ", ymod)
+
+
+#Calculando valor predito modelo- metodo 2
+mpgpred=mod1$fitted.values[1]
+mpgpred
+
+
+# Intervalo de Confiança para o valor predito
+
+s2_pred=MSE*(1/n+((xval-mean(dados$wt))^2)/sum((dados$wt-mean(dados$wt))^2))
+s_pred=sqrt(s2_pred)
+
+ic_up_pred=mpgpred+s_pred*qt(0.025,df=(n-2),lower.tail=F)
+ic_dw_pred=mpgpred-s_pred*qt(0.025,df=(n-2),lower.tail=F)
+ic_pred=c(ic_dw_pred,ic_up_pred)
+ic_pred
+
+# Intervalos de Confiança de Predições - diretamente pela função do R
+wt_df = data.frame(dados$wt) 
+intervals=predict(mod1,wt_df,interval="confidence") 
+intervals[1,] # fit , lower and upper value
+
+
+paste("Com 95% de confiança, acredita-se que o valor esperado médio de Y para quando X é ", xval," seja igual a  ", ymod, "e  que este valor esteja dentro do intervalo de confiança que vai do valor " , ic_dw_pred, " ao valor",ic_up_pred)
+
+
+```
+ Como é possível perceber pelos resultados acima o valor predito esta dentro do intervalo de confiança, a 95% de confiança.
+
+
