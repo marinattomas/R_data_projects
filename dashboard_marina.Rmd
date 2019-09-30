@@ -1,0 +1,212 @@
+---
+title: "Dashboard "
+author: "Marina Tomás"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    source_code: embed
+    theme: journal
+    favicon: logo.png
+    logo: logo.png
+    runtime: shiny
+    social: ["twitter","facebook","linkedin"]
+    navbar:
+      - { title: "Sobre Mim",icon: fa-address-card, href: "http://www.fabricaderabiscos.com.br/", align: right }
+    
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(readr)
+library(ggplot2)
+library(plotly)
+library(DT)
+library(dygraphs)
+library(maps)
+library(rsconnect)
+
+iris= read.csv("iris.csv")
+
+mean_values = iris %>%
+  summarise(media_SL = round(mean(sepal_length),3),
+            media_SW = round(mean(sepal_width),3),
+            media_PL = round(mean(petal_length),3),
+            media_PW = round(mean(petal_width),3))
+```
+
+
+# Gráficos {data-icon="fa-signal" }
+
+O Dashboard é uma representação visual das informações mais importantes em forma de painel de controle para auxiliar na tomada de decisões. Ou seja, utilizamos uma grande base de dados disponível na empresa e transformamos ela nos principais indicadores de desempenho, com gráficos e tabelas relevantes. Existem diversos tipos de geração de informação, mas o formato visual ganha muitos pontos quandose trata de entender como estão indo resultados, possibilitando que qualquer pessoa consiga consumir a informação
+
+Saiba mais sobre este banco de dados em: [Banco Iris](https://archive.ics.uci.edu/ml/datasets/iris)
+
+Clique aqui para ver as Análises: [Gráficos] [ Tabela 1](#page-2) [Tabela 2]
+
+Column {data-width=650} 
+-----------------------------------------------------------------------
+
+### Grafico de Pontos {data-height=950}
+
+```{r}
+grafico_de_pontos = ggplot(data = iris,
+                           aes(x=sepal_width,y=sepal_length, color=species))+
+  geom_point()
+
+ggplotly(grafico_de_pontos)
+
+```
+
+
+### Explicação 
+
+Este é um gráfico de pontos que representa as três espécies de flores estudadas
+
+Column {data-width=350}{.tabset}
+-----------------------------------------------------------------------
+
+### Boxplot 
+
+```{r}
+boxplot = ggplot(data=iris,
+       aes(x=species, y=petal_length,color=species)) + 
+  geom_boxplot() 
+
+ggplotly(boxplot)
+```
+
+> Esse gráfico foi produzido no curso avançado R ladies
+
+### Histograma
+
+```{r}
+histograma = ggplot(data=iris,
+                    aes(x=sepal_length,fill=species)) + 
+  geom_histogram() 
+
+ggplotly(histograma)
+```
+
+# Tabela 1 {data_table=row data-icon="fa-table" data-navmenu="Tabelas"}
+
+### Tabela 1
+
+```{r}
+knitr::kable(iris)
+```
+
+
+# Tabela 2 {data_table=row data-icon="fa-list" data-navmenu="Tabelas"}
+
+### Tabela 2
+
+```{r}
+DT::datatable(iris, options = list(pageLenght=25))
+```
+
+# Valores {data-icon="fa-list"}
+
+## Column 
+
+### Média - Sepal Length
+
+```{r}
+valueBox(mean_values$media_SL, icon = "fa-pagelines", color = "#9BC1BC")
+```
+
+### Média - Sepal Width
+
+```{r}
+valueBox(mean_values$media_SW, icon = "fa-leaf", color = "info")
+```
+
+### Numero de observação de Setosas com comprimento de Sepala maior que 5 cm
+
+```{r}
+filtro = iris %>%
+  filter(sepal_length > 5) %>%
+    group_by(species) %>%
+    summarise(Quantidade = n())
+
+gauge(filtro$Quantidade[1], min = 0, max = 50, symbol = "%", gaugeSectors(
+  success = c(41,50), warning = c(21,40), danger = c(0,20),colors = c("#335C67", "#E09F3E", "#9E2A2B")
+))
+```
+
+## Column 
+
+### Média - Petal Length
+
+```{r}
+valueBox(mean_values$media_PL, icon = "fa-seedling", color = "success")
+```
+
+### Média - Petal Width
+
+```{r}
+valueBox(mean_values$media_PW, icon = "fa-envira", color = "warning")
+```
+
+### Numero de observação de Vesicolor com comprimento de Sepala maior que 5 cm
+
+```{r}
+
+gauge(filtro$Quantidade[2], min = 0, max = 50, symbol = "%", gaugeSectors(
+  success = c(41,50), warning = c(21,40), danger = c(0,20),colors = c("#335C67", "#E09F3E", "#9E2A2B")
+))
+```
+
+# Widgets 
+
+### Lung Deaths 
+
+```{r}
+dygraph(ldeaths)
+```
+
+# Gráfico Reativo
+
+## Barra Lateral  {.sidebar}
+
+Essa Barra lateral foi incluida apenas nesta página
+
+```{r}
+
+inputPanel(
+checkboxGroupInput("species", label = h3("Selecione a espécie:"), 
+    
+  choices = list("Setosa" = "setosa", 
+    "Versicolor" = 'versicolor', 
+    "Virginica" = 'virginica'),    
+    
+    selected = "setosa")
+)
+
+dados <- reactive({
+  iris2 <- filter(iris, iris$species == input$species)
+       return(iris2)})
+
+```
+
+## Gráfico
+
+### Gráfico reativo 
+
+```{r}
+
+output$grafico_pontos <- renderPlotly({
+  
+grafico = ggplot(data=dados(),
+       aes(x=sepal_width, y=sepal_length, color = species)) + 
+        geom_point()
+
+ggplotly(grafico)
+
+})
+
+plotlyOutput('grafico_pontos')
+
+
+```
+
